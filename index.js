@@ -7,6 +7,8 @@ const optionDefinitions = [
 
 const fs = require('fs'),
     winston = require('winston'),
+    elasticsearch = require('elasticsearch'),
+    Elasticsearch = require('winston-elasticsearch'),
     args = require('command-line-args')(optionDefinitions),
     queue = new (require('./lib/queue'))(),
     InspectURL = require('./lib/inspect_url'),
@@ -19,6 +21,16 @@ const fs = require('fs'),
 if (CONFIG.max_simultaneous_requests === undefined) {
     CONFIG.max_simultaneous_requests = 1;
 }
+
+const client = new elasticsearch.Client({ host: CONFIG.es_host })
+
+var esTransportOpts = {
+  level: 'info',
+  client: client,
+  indexPrefix: 'csgofloat'
+
+};
+winston.add(new Elasticsearch(esTransportOpts));
 
 winston.level = CONFIG.logLevel || 'debug';
 
