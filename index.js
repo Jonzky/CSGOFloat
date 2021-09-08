@@ -5,10 +5,9 @@ const optionDefinitions = [
     { name: 'steam_data', alias: 's', type: String } // Steam data directory
 ];
 
-const fs = require('fs'),
-    winston = require('winston'),
-    elasticsearch = require('elasticsearch'),
-    Elasticsearch = require('winston-elasticsearch'),
+    var logger = require('./lib/log.js');  
+    
+    const fs = require('fs'),
     args = require('command-line-args')(optionDefinitions),
     bodyParser = require('body-parser'),
     rateLimit = require('express-rate-limit'),
@@ -17,7 +16,7 @@ const fs = require('fs'),
     InspectURL = require('./lib/inspect_url'),
     botController = new (require('./lib/bot_controller'))(),
     CONFIG = require(args.config),
-    postgres = new (require('./lib/postgres'))(CONFIG.database_url, CONFIG.enable_bulk_inserts),
+    //    postgres = new (require('./lib/postgres'))(CONFIG.database_url, CONFIG.enable_bulk_inserts),
     gameData = new (require('./lib/game_data'))(CONFIG.game_files_update_interval, CONFIG.enable_game_file_updates),
     errors = require('./errors'),
     Job = require('./lib/job');
@@ -25,18 +24,6 @@ const fs = require('fs'),
 if (CONFIG.max_simultaneous_requests === undefined) {
     CONFIG.max_simultaneous_requests = 1;
 }
-
-const client = new elasticsearch.Client({ host: CONFIG.es_host })
-
-var esTransportOpts = {
-  level: 'info',
-  client: client,
-  indexPrefix: 'csgofloat'
-
-};
-winston.add(new Elasticsearch(esTransportOpts));
-
-winston.level = CONFIG.logLevel || 'debug';
 
 if (CONFIG.logins.length === 0) {
     console.log('There are no bot logins. Please add some in config.json');
@@ -51,7 +38,7 @@ for (let loginData of CONFIG.logins) {
     botController.addBot(loginData, CONFIG.bot_settings);
 }
 
-postgres.connect();
+// postgres.connect();
 
 // Setup and configure express
 const app = require('express')();
@@ -84,19 +71,19 @@ const allowedRegexOrigins = CONFIG.allowed_regex_origins.map((origin) => new Reg
 
 async function handleJob(job) {
     // See which items have already been cached
-    const itemData = await postgres.getItemData(job.getRemainingLinks().map(e => e.link));
-    for (let item of itemData) {
-        const link = job.getLink(item.a);
+    // const itemData = await postgres.getItemData(job.getRemainingLinks().map(e => e.link));
+    // for (let item of itemData) {
+    //     const link = job.getLink(item.a);
 
-        if (!item.price && link.price) {
-            postgres.updateItemPrice(item.a, link.price);
-        }
+    //     if (!item.price && link.price) {
+    //         postgres.updateItemPrice(item.a, link.price);
+    //     }
 
-        gameData.addAdditionalItemProperties(item);
-        item = utils.removeNullValues(item);
+    //     gameData.addAdditionalItemProperties(item);
+    //     item = utils.removeNullValues(item);
 
-        job.setResponse(item.a, item);
-    }
+    //     job.setResponse(item.a, item);
+    // }
 
     if (!botController.hasBotOnline()) {
         return job.setResponseRemaining(errors.SteamOffline);
@@ -169,7 +156,7 @@ app.get('/', function(req, res) {
     try {
         handleJob(job);
     } catch (e) {
-        winston.warn(e);
+        logger.warn(e);
         errors.GenericBad.respond(res);
     }
 });
@@ -207,7 +194,7 @@ app.post('/bulk', (req, res) => {
     try {
         handleJob(job);
     } catch (e) {
-        winston.warn(e);
+        logger.warn(e);
         errors.GenericBad.respond(res);
     }
 });
@@ -223,21 +210,21 @@ app.get('/stats', (req, res) => {
 
 const http_server = require('http').Server(app);
 http_server.listen(CONFIG.http.port);
-winston.info('Listening for HTTP on port: ' + CONFIG.http.port);
+logger.info('Listening for HTTP on port: ' + CONFIG.http.port);
 
 queue.process(CONFIG.logins.length, botController, async (job) => {
     const itemData = await botController.lookupFloat(job.data.link);
-    winston.debug(`Received itemData for ${job.data.link.getParams().a}`);
+    logger.debug(`Received itemData for ${job.data.link.getParams().a}`);
 
     // Save and remove the delay attribute
     let delay = itemData.delay;
     delete itemData.delay;
 
     // add the item info to the DB
-    await postgres.insertItemData(itemData.iteminfo, job.data.price);
+    //await postgres.insertItemData(itemData.iteminfo, job.data.price);
 
     // Get rank, annotate with game files
-    itemData.iteminfo = Object.assign(itemData.iteminfo, await postgres.getItemRank(itemData.iteminfo.a));
+    //itemData.iteminfo = Object.assign(itemData.iteminfo, await postgres.getItemRank(itemData.iteminfo.a));
     gameData.addAdditionalItemProperties(itemData.iteminfo);
 
     itemData.iteminfo = utils.removeNullValues(itemData.iteminfo);
@@ -250,7 +237,7 @@ queue.process(CONFIG.logins.length, botController, async (job) => {
 
 queue.on('job failed', (job, err) => {
     const params = job.data.link.getParams();
-    winston.warn(`Job Failed! S: ${params.s} A: ${params.a} D: ${params.d} M: ${params.m} IP: ${job.ip}, Err: ${(err || '').toString()}`);
+    logger.warn(`Job Failed! S: ${params.s} A: ${params.a} D: ${params.d} M: ${params.m} IP: ${job.ip}, Err: ${(err || '').toString()}`);
 
     job.data.job.setResponse(params.a, errors.TTLExceeded);
 });

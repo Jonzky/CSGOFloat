@@ -14,9 +14,10 @@
   },
   "dependencies": {
     "body-parser": "^1.19.0",
+    "bufferutil": "^4.0.3",
     "command-line-args": "^5.1.1",
+    "elasticsearch": "^16.7.2",
     "express": "^4.17.1",
-    "elasticsearch": "^16.5.0",
     "express-rate-limit": "^5.2.6",
     "globaloffensive": "^2.1.0",
     "long": "^3.2.0",
@@ -26,8 +27,9 @@
     "socket.io": "^2.4.0",
     "steam-totp": "^1.5.0",
     "steam-user": "^4.19.10",
-    "winston": "^3.1.0",
-    "winston-elasticsearch": "^0.8.2"
+    "utf-8-validate": "^5.0.5",
+    "winston": "^3.3.3",
+    "winston-elasticsearch": "^0.15.8"
   },
   "devDependencies": {
     "eslint": "^4.19.1",
